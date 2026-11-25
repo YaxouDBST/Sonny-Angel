@@ -7,6 +7,9 @@
 
 const STORAGE_KEY = "sonnydex-collection-v1";
 const LEGACY_STORAGE_KEYS = ["sonnydex-guest-v2"];
+const IDB_NAME = "sonnydex-db";
+const IDB_VERSION = 1;
+const IDB_STORE = "collection";
 
 /**
  * ============================================================================
@@ -196,6 +199,7 @@ const el = {
   deleteEntryBtn: document.querySelector("#delete-entry-btn"),
 
   toast: document.querySelector("#toast"),
+  storageBadgeLabel: document.querySelector("#storage-badge-label"),
 };
 
 const state = {
@@ -274,64 +278,54 @@ function showToast(message) {
 
 /**
  * ============================================================================
- * Persistance LocalStorage (100 % autonome dans le navigateur)
+ * Persistance IndexedDB (100 % gratuite, grande capacité & hors-ligne)
+ * Avec migration automatique depuis localStorage
  * ============================================================================
  */
-function loadCollection() {
+let dbPromise = null;
+let usingIdb = true;
+
+function normalizeEntry(item) {
+  if (!item || !FIGURES_BY_ID.has(item.catalog_id)) return null;
+  return {
+    catalog_id: item.catalog_id,
+    status: item.status === "wishlist" ? "wishlist" : "owned",
+    duplicates: Math.max(0, Number(item.duplicates) || 0),
+    acquired_at: item.acquired_at || "",
+    price:
+      item.price !== null && item.price !== undefined && item.price !== ""
+        ? Number(item.price)
+        : null,
+    location: item.location || "",
+    note: item.note || "",
+    photoUrl: item.photoUrl || "",
+  };
+}
+
+function readLegacyLocalStorage() {
   try {
     let raw = localStorage.getItem(STORAGE_KEY);
-    // Migration douce si l'utilisateur avait déjà enregistré des données sous l'ancienne clé
     if (!raw) {
       for (const legacyKey of LEGACY_STORAGE_KEYS) {
         const legacyRaw = localStorage.getItem(legacyKey);
         if (legacyRaw) {
           raw = legacyRaw;
-          localStorage.setItem(STORAGE_KEY, legacyRaw);
           break;
         }
       }
     }
-    if (!raw) return new Map();
-
+    if (!raw) return [];
     const list = JSON.parse(raw);
-    const map = new Map();
-    for (const item of list) {
-      if (FIGURES_BY_ID.has(item.catalog_id)) {
-        map.set(item.catalog_id, {
-          catalog_id: item.catalog_id,
-          status: item.status === "wishlist" ? "wishlist" : "owned",
-          duplicates: Math.max(0, Number(item.duplicates) || 0),
-          acquired_at: item.acquired_at || "",
-          price:
-            item.price !== null && item.price !== undefined && item.price !== ""
-              ? Number(item.price)
-              : null,
-          location: item.location || "",
-          note: item.note || "",
-          photoUrl: item.photoUrl || "",
-        });
-      }
-    }
-    return map;
+    if (!Array.isArray(list)) return [];
+    return list.map(normalizeEntry).filter(Boolean);
   } catch {
-    return new Map();
+    return [];
   }
 }
 
-function persistCollection() {
-  const serialized = [...state.collection.values()].map((entry) => ({
-    catalog_id: entry.catalog_id,
-    status: entry.status,
-    duplicates: entry.duplicates || 0,
-    acquired_at: entry.acquired_at || "",
-    price: entry.price ?? null,
-    location: entry.location || "",
-    note: entry.note || "",
-    photoUrl: entry.photoUrl || "",
-  }));
-
+function writeLocalStorageFallback(entries) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
   } catch (err) {
     if (err?.name === "QuotaExceededError") {
       throw new Error(
@@ -340,6 +334,154 @@ function persistCollection() {
     }
     throw err;
   }
+}
+
+function openDatabase() {
+  if (!("indexedDB" in window)) {
+    return Promise.reject(new Error("IndexedDB non supporté"));
+  }
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: "catalog_id" });
+      }
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      // Sur iOS Safari, la connexion IDB peut être fermée au passage en arrière-plan
+      db.onclose = () => {
+        dbPromise = null;
+      };
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+      resolve(db);
+    };
+    request.onerror = () => {
+      dbPromise = null;
+      reject(request.error || new Error("Impossible d'ouvrir IndexedDB."));
+    };
+  });
+  return dbPromise;
+}
+
+async function idbGetAll() {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const store = tx.objectStore(IDB_STORE);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error || new Error("Lecture IndexedDB impossible."));
+  });
+}
+
+async function idbPut(entry) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(entry);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("Sauvegarde IndexedDB impossible."));
+  });
+}
+
+async function idbDelete(catalogId) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).delete(catalogId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("Suppression IndexedDB impossible."));
+  });
+}
+
+async function idbReplaceAll(entries) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    const store = tx.objectStore(IDB_STORE);
+    store.clear();
+    for (const entry of entries) {
+      store.put(entry);
+    }
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("Import IndexedDB impossible."));
+  });
+}
+
+async function loadCollection() {
+  const map = new Map();
+  try {
+    let entries = (await idbGetAll()).map(normalizeEntry).filter(Boolean);
+    // Migration automatique depuis localStorage si IndexedDB est encore vide
+    if (entries.length === 0) {
+      const legacyEntries = readLegacyLocalStorage();
+      if (legacyEntries.length > 0) {
+        await idbReplaceAll(legacyEntries);
+        entries = legacyEntries;
+      }
+    }
+    usingIdb = true;
+    navigator.storage?.persist?.().catch(() => {});
+    for (const entry of entries) {
+      map.set(entry.catalog_id, entry);
+    }
+    return map;
+  } catch {
+    usingIdb = false;
+    if (el.storageBadgeLabel) {
+      el.storageBadgeLabel.textContent = "Sauvegarde locale";
+    }
+    for (const entry of readLegacyLocalStorage()) {
+      map.set(entry.catalog_id, entry);
+    }
+    return map;
+  }
+}
+
+async function persistEntry(entry) {
+  const normalized = normalizeEntry(entry);
+  if (!normalized) return;
+  if (usingIdb) {
+    try {
+      await idbPut(normalized);
+      return;
+    } catch {
+      // Si la connexion IDB a été réinitialisée, retenter une fois avant repli
+      dbPromise = null;
+      try {
+        await idbPut(normalized);
+        return;
+      } catch (err) {
+        throw new Error(
+          err?.message || "Impossible d'enregistrer dans IndexedDB."
+        );
+      }
+    }
+  }
+  const all = [...state.collection.values()].map(normalizeEntry).filter(Boolean);
+  writeLocalStorageFallback(all);
+}
+
+async function removePersistedEntry(catalogId) {
+  if (usingIdb) {
+    try {
+      await idbDelete(catalogId);
+      return;
+    } catch {
+      dbPromise = null;
+      await idbDelete(catalogId);
+      return;
+    }
+  }
+  const all = [...state.collection.values()].map(normalizeEntry).filter(Boolean);
+  writeLocalStorageFallback(all);
 }
 
 /**
@@ -825,50 +967,58 @@ function render() {
  * Actions Wishlist, Doublons & Suppression
  * ============================================================================
  */
-function addToWishlist(figureId) {
+async function addToWishlist(figureId) {
   const figure = FIGURES_BY_ID.get(figureId);
   if (!figure) return;
 
+  const entry = {
+    catalog_id: figureId,
+    status: "wishlist",
+    duplicates: 0,
+    acquired_at: "",
+    price: null,
+    location: "",
+    note: "",
+    photoUrl: "",
+  };
+  const previous = state.collection.get(figureId);
+
   try {
-    state.collection.set(figureId, {
-      catalog_id: figureId,
-      status: "wishlist",
-      duplicates: 0,
-      acquired_at: "",
-      price: null,
-      location: "",
-      note: "",
-      photoUrl: "",
-    });
-    persistCollection();
+    state.collection.set(figureId, entry);
+    await persistEntry(entry);
     render();
     showToast(`${figure.nameFr} ajouté à ta liste d'achats ♡`);
   } catch (error) {
+    if (previous) state.collection.set(figureId, previous);
+    else state.collection.delete(figureId);
     showToast(error.message || "Impossible d'ajouter à la wishlist.");
   }
 }
 
-function removeWishlist(figureId) {
-  if (!state.collection.has(figureId)) return;
+async function removeWishlist(figureId) {
+  const previous = state.collection.get(figureId);
+  if (!previous) return;
   try {
     state.collection.delete(figureId);
-    persistCollection();
+    await removePersistedEntry(figureId);
     render();
     showToast("Retiré de ta liste d'achats.");
   } catch (error) {
+    state.collection.set(figureId, previous);
     showToast(error.message || "Erreur lors de la suppression.");
   }
 }
 
-function adjustDuplicates(figureId, delta) {
+async function adjustDuplicates(figureId, delta) {
   const entry = state.collection.get(figureId);
   if (!entry || entry.status !== "owned") return;
-  const nextDuplicates = Math.max(0, (entry.duplicates || 0) + delta);
-  if (nextDuplicates === entry.duplicates) return;
+  const previousDuplicates = entry.duplicates || 0;
+  const nextDuplicates = Math.max(0, previousDuplicates + delta);
+  if (nextDuplicates === previousDuplicates) return;
 
   try {
     entry.duplicates = nextDuplicates;
-    persistCollection();
+    await persistEntry(entry);
     render();
     showToast(
       delta > 0
@@ -876,23 +1026,26 @@ function adjustDuplicates(figureId, delta) {
         : `Doublon mis à jour (${nextDuplicates}).`
     );
   } catch (error) {
+    entry.duplicates = previousDuplicates;
     showToast(error.message || "Impossible de mettre à jour les doublons.");
   }
 }
 
-function deleteOwnedEntry(figureId) {
+async function deleteOwnedEntry(figureId) {
   const figure = FIGURES_BY_ID.get(figureId);
-  if (!state.collection.has(figureId) || !window.confirm(`Retirer ${figure.nameFr} de ta collection ?`)) {
+  const previous = state.collection.get(figureId);
+  if (!previous || !window.confirm(`Retirer ${figure.nameFr} de ta collection ?`)) {
     return;
   }
 
   try {
     state.collection.delete(figureId);
-    persistCollection();
+    await removePersistedEntry(figureId);
     el.photoDialog.close();
     render();
     showToast(`${figure.nameFr} retiré de la collection.`);
   } catch (error) {
+    state.collection.set(figureId, previous);
     el.photoMessage.textContent = error.message || "Impossible de retirer cette figurine.";
   }
 }
@@ -1059,7 +1212,7 @@ async function handleSaveFigure(event) {
       photoUrl = await blobToDataUrl(blob);
     }
 
-    state.collection.set(figureId, {
+    const entry = {
       catalog_id: figureId,
       status: "owned",
       duplicates,
@@ -1068,13 +1221,16 @@ async function handleSaveFigure(event) {
       location,
       note,
       photoUrl,
-    });
-    persistCollection();
+    };
+    state.collection.set(figureId, entry);
+    await persistEntry(entry);
 
     el.photoDialog.close();
     render();
     showToast(`${figure.nameFr} enregistré dans ta collection ✓`);
   } catch (error) {
+    if (existing) state.collection.set(figureId, existing);
+    else state.collection.delete(figureId);
     el.photoMessage.textContent = error.message || "Impossible d'enregistrer ce Sonny Angel.";
   } finally {
     el.saveButton.disabled = false;
@@ -1188,8 +1344,7 @@ function captureSnapPhoto() {
  * Initialisation & Écouteurs d'événements
  * ============================================================================
  */
-function initialize() {
-  state.collection = loadCollection();
+async function initialize() {
   render();
 
   el.tabCollection.addEventListener("click", () => {
@@ -1289,6 +1444,9 @@ function initialize() {
   el.photoDialog.addEventListener("click", (event) => {
     if (event.target === el.photoDialog) el.photoDialog.close();
   });
+
+  state.collection = await loadCollection();
+  render();
 }
 
 if ("serviceWorker" in navigator) {
@@ -1297,4 +1455,4 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-initialize();
+void initialize();
