@@ -9,7 +9,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="SonnyDex" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
     <meta
@@ -59,11 +58,18 @@
       :root {
         color-scheme: light;
       }
+      html {
+        -webkit-text-size-adjust: 100%;
+        scroll-behavior: smooth;
+      }
       body {
         background-color: #fffdf9;
         color: #3c3532;
         font-family: "Nunito", system-ui, sans-serif;
         -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        overscroll-behavior-y: contain;
+        padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
       }
       /* Masquer la barre de scroll sur les onglets horizontaux mobile */
       .no-scrollbar::-webkit-scrollbar {
@@ -80,11 +86,16 @@
         box-shadow: 0 8px 22px rgba(92, 68, 56, 0.09), 0 2px 5px rgba(92, 68, 56, 0.04);
         transition: transform 0.22s ease, box-shadow 0.22s ease;
       }
-      .polaroid-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 26px rgba(92, 68, 56, 0.12);
+      @media (hover: hover) {
+        .polaroid-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 26px rgba(92, 68, 56, 0.12);
+        }
       }
       /* Animation douce des dialogues natifs */
+      dialog.kawaii-dialog {
+        overscroll-behavior: contain;
+      }
       dialog.kawaii-dialog::backdrop {
         background: rgba(60, 53, 50, 0.45);
         backdrop-filter: blur(4px);
@@ -114,50 +125,86 @@
       .float-angel {
         animation: floatAngel 4s ease-in-out infinite;
       }
-      /* Évite que <input type="date"> sur iOS/Android ne déborde ou change de taille */
+      /* Cadrage parfait de <input type="date"> sur iOS Safari / iPhone */
       input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 100%;
         min-width: 0;
         max-width: 100%;
         box-sizing: border-box;
+        text-align: left;
+        background-color: #ffffff;
+      }
+      input[type="date"]::-webkit-date-and-time-value {
+        text-align: left;
+        margin: 0;
+      }
+      input[type="date"]::-webkit-datetime-edit,
+      input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+        padding: 0;
+        text-align: left;
+      }
+      /* Select uniforme sur iOS Safari */
+      select.kawaii-select {
+        -webkit-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238E827B' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem;
+        padding-right: 2.25rem;
+      }
+      .modal-scroll {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
       }
     </style>
   </head>
 
-  <body class="min-h-screen bg-cream text-ink pb-28 antialiased">
+  <body class="min-h-screen bg-cream text-ink antialiased">
     <!-- En-tête compacte mobile-first -->
     <header
       class="sticky top-0 z-30 border-b border-line bg-cream/90 backdrop-blur-md"
-      style="padding-top: env(safe-area-inset-top)"
+      style="padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);"
     >
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-        <a href="#top" class="flex items-center gap-2.5 focus:outline-none">
-          <span
-            class="float-angel grid h-9 w-9 place-items-center rounded-2xl bg-pastel text-lg text-white shadow-sm"
+      <div class="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
+        <a href="#top" class="flex min-w-0 items-center gap-2.5 focus:outline-none">
+          <img
+            src="icons/icon-192.png"
+            alt=""
             aria-hidden="true"
-            >👼</span
-          >
-          <div>
+            class="float-angel h-9 w-9 shrink-0 rounded-2xl border border-[#FFD6E0] object-cover shadow-sm"
+          />
+          <div class="min-w-0">
             <span class="font-display text-xl font-bold tracking-tight text-ink"
               >Sonny<span class="text-pastel-dark">Dex</span></span
             >
-            <p class="text-[10px] font-bold uppercase tracking-wider text-muted">
+            <p class="truncate text-[10px] font-bold uppercase tracking-wider text-muted">
               Carnet de collection
             </p>
           </div>
         </a>
 
-        <div class="flex items-center gap-2">
+        <div class="flex shrink-0 items-center gap-2">
           <span
-            class="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-[11px] font-bold text-muted"
+            class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-bold text-muted sm:px-3"
           >
-            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <span class="h-2 w-2 shrink-0 rounded-full bg-emerald-500"></span>
             <span>Sauvegarde locale</span>
           </span>
         </div>
       </div>
     </header>
 
-    <main id="top" class="mx-auto max-w-5xl px-4 pt-5 sm:px-6">
+    <main
+      id="top"
+      class="mx-auto max-w-5xl px-4 pt-5 sm:px-6"
+      style="padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
+    >
       <!-- Tableau de bord Collectionneur -->
       <section aria-label="Tableau de bord collectionneur" class="mb-6">
         <div
@@ -184,7 +231,7 @@
             <!-- Total Acquis -->
             <div class="rounded-2xl border border-white bg-white/90 p-3 shadow-sm">
               <p class="text-[11px] font-bold text-muted">Acquis</p>
-              <div class="mt-1 flex items-baseline gap-1.5">
+              <div class="mt-1 flex items-baseline gap-1.5 tabular-nums">
                 <span id="stat-owned" class="font-display text-2xl font-bold text-emerald-600"
                   >0</span
                 >
@@ -198,7 +245,7 @@
             <!-- Valeur estimée -->
             <div class="rounded-2xl border border-white bg-white/90 p-3 shadow-sm">
               <p class="text-[11px] font-bold text-muted">Valeur estimée</p>
-              <p id="stat-value" class="mt-1 font-display text-2xl font-bold text-ink">0,00 €</p>
+              <p id="stat-value" class="mt-1 font-display text-xl font-bold text-ink tabular-nums sm:text-2xl">0,00 €</p>
               <p class="mt-0.5 text-[11px] text-muted">Somme des prix saisis</p>
             </div>
 
@@ -206,10 +253,10 @@
             <button
               id="stat-wishlist-card"
               type="button"
-              class="rounded-2xl border border-[#FFDCE4] bg-pastel-pale/70 p-3 text-left shadow-sm transition hover:bg-pastel-pale"
+              class="rounded-2xl border border-[#FFDCE4] bg-pastel-pale/70 p-3 text-left shadow-sm transition active:scale-[0.98] hover:bg-pastel-pale"
             >
               <p class="text-[11px] font-bold text-pastel-dark">Wishlist ♡</p>
-              <p id="stat-wishlist" class="mt-1 font-display text-2xl font-bold text-pastel-dark">
+              <p id="stat-wishlist" class="mt-1 font-display text-2xl font-bold text-pastel-dark tabular-nums">
                 0
               </p>
               <p class="mt-0.5 text-[11px] font-semibold text-pastel-dark/80">
@@ -220,7 +267,7 @@
             <!-- Doublons -->
             <div class="rounded-2xl border border-white bg-white/90 p-3 shadow-sm">
               <p class="text-[11px] font-bold text-muted">Doublons (échanges)</p>
-              <p id="stat-duplicates" class="mt-1 font-display text-2xl font-bold text-amber-600">
+              <p id="stat-duplicates" class="mt-1 font-display text-2xl font-bold text-amber-600 tabular-nums">
                 0
               </p>
               <p class="mt-0.5 text-[11px] text-muted">Figurines en double</p>
@@ -535,7 +582,10 @@
       class="kawaii-dialog m-auto w-[calc(100%-24px)] max-w-md rounded-3xl border border-line bg-cream p-0 text-ink shadow-2xl"
       aria-labelledby="photo-dialog-title"
     >
-      <div class="relative max-h-[90dvh] overflow-y-auto overflow-x-hidden p-5 sm:p-6">
+      <div
+        class="modal-scroll relative max-h-[88dvh] overflow-y-auto overflow-x-hidden p-5 sm:p-6"
+        style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))"
+      >
         <button
           type="button"
           data-close-dialog="photo-dialog"
@@ -611,7 +661,7 @@
               id="photo-search"
               type="search"
               placeholder="Ex : Lapin, Fraise, Pousse, Robby, Hipper…"
-              class="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink placeholder:text-muted/60 focus:border-pastel-dark focus:outline-none"
+              class="h-[44px] w-full rounded-xl border border-line bg-white px-3 text-base text-ink placeholder:text-muted/60 focus:border-pastel-dark focus:outline-none sm:text-sm"
             />
           </div>
 
@@ -623,7 +673,7 @@
               <select
                 id="photo-series"
                 required
-                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink focus:border-pastel-dark focus:outline-none"
+                class="kawaii-select h-[44px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-base font-semibold text-ink focus:border-pastel-dark focus:outline-none sm:text-sm"
               ></select>
             </div>
             <div class="min-w-0">
@@ -633,7 +683,7 @@
               <select
                 id="photo-figure"
                 required
-                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink focus:border-pastel-dark focus:outline-none"
+                class="kawaii-select h-[44px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-base font-semibold text-ink focus:border-pastel-dark focus:outline-none sm:text-sm"
               ></select>
             </div>
           </div>
@@ -647,7 +697,7 @@
                 id="photo-date"
                 type="date"
                 required
-                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm text-ink focus:border-pastel-dark focus:outline-none"
+                class="h-[44px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-base text-ink focus:border-pastel-dark focus:outline-none sm:text-sm"
               />
             </div>
             <div class="min-w-0">
@@ -661,7 +711,7 @@
                 min="0"
                 inputmode="decimal"
                 placeholder="12.90"
-                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm text-ink focus:border-pastel-dark focus:outline-none"
+                class="h-[44px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-base text-ink focus:border-pastel-dark focus:outline-none sm:text-sm"
               />
             </div>
           </div>
@@ -676,7 +726,7 @@
                 type="text"
                 maxlength="120"
                 placeholder="Ex : Pop Mart, Vinted, Fnac…"
-                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm text-ink focus:border-pastel-dark focus:outline-none"
+                class="h-[44px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-base text-ink focus:border-pastel-dark focus:outline-none sm:text-sm"
               />
             </div>
 
@@ -685,21 +735,21 @@
                 >Doublons (pour échanges)</label
               >
               <div
-                class="flex h-[42px] items-center justify-between rounded-xl border border-line bg-white px-2"
+                class="flex h-[44px] items-center justify-between rounded-xl border border-line bg-white px-2"
               >
                 <button
                   id="dup-dec"
                   type="button"
-                  class="grid h-7 w-7 place-items-center rounded-lg bg-paper font-bold text-ink hover:bg-pastel-pale"
+                  class="grid h-8 w-8 place-items-center rounded-lg bg-paper font-bold text-ink active:scale-95 hover:bg-pastel-pale"
                   aria-label="Retirer un doublon"
                 >
                   −
                 </button>
-                <span id="photo-duplicates" class="text-sm font-extrabold text-ink">0</span>
+                <span id="photo-duplicates" class="text-sm font-extrabold text-ink tabular-nums">0</span>
                 <button
                   id="dup-inc"
                   type="button"
-                  class="grid h-7 w-7 place-items-center rounded-lg bg-paper font-bold text-ink hover:bg-pastel-pale"
+                  class="grid h-8 w-8 place-items-center rounded-lg bg-paper font-bold text-ink active:scale-95 hover:bg-pastel-pale"
                   aria-label="Ajouter un doublon"
                 >
                   +
@@ -717,7 +767,7 @@
               rows="2"
               maxlength="240"
               placeholder="Unboxing chanceux du premier coup !"
-              class="w-full resize-none rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:border-pastel-dark focus:outline-none"
+              class="w-full resize-none rounded-xl border border-line bg-white px-3 py-2 text-base text-ink focus:border-pastel-dark focus:outline-none sm:text-sm"
             ></textarea>
           </div>
 
@@ -748,7 +798,8 @@
       id="toast"
       role="status"
       aria-live="polite"
-      class="pointer-events-none fixed bottom-20 left-1/2 z-50 w-max max-w-[calc(100%-32px)] -translate-x-1/2 translate-y-2 rounded-full border border-line bg-ink px-4 py-2 text-xs font-bold text-white opacity-0 shadow-lg transition-all duration-200"
+      style="bottom: calc(7.5rem + env(safe-area-inset-bottom))"
+      class="pointer-events-none fixed left-1/2 z-50 w-max max-w-[calc(100%-32px)] -translate-x-1/2 translate-y-2 rounded-full border border-line bg-ink px-4 py-2 text-xs font-bold text-white opacity-0 shadow-lg transition-all duration-200"
     ></div>
 
     <script type="module" src="app.js"></script>

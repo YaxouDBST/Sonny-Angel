@@ -471,10 +471,10 @@ function renderDashboard() {
  */
 function renderNavigation() {
   const isCollection = state.view === "collection";
-  el.tabCollection.className = `flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
+  el.tabCollection.className = `flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 py-2.5 text-xs font-bold transition active:scale-[0.98] sm:gap-2 sm:px-3 sm:text-sm ${
     isCollection ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"
   }`;
-  el.tabWishlist.className = `flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
+  el.tabWishlist.className = `flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 py-2.5 text-xs font-bold transition active:scale-[0.98] sm:gap-2 sm:px-3 sm:text-sm ${
     !isCollection ? "bg-white text-pastel-dark shadow-sm" : "text-muted hover:text-ink"
   }`;
 
@@ -656,7 +656,7 @@ function createFigureCard(figure, { showSeriesLabel = false } = {}) {
       const decBtn = document.createElement("button");
       decBtn.type = "button";
       decBtn.className =
-        "rounded-lg border border-line bg-paper px-2 py-1 text-[11px] font-extrabold text-ink hover:bg-pastel-pale";
+        "min-h-[32px] min-w-[34px] rounded-lg border border-line bg-paper px-2 py-1 text-[11px] font-extrabold text-ink active:scale-95 hover:bg-pastel-pale";
       decBtn.textContent = "−1";
       decBtn.setAttribute("aria-label", `Retirer un doublon de ${figure.nameFr}`);
       decBtn.addEventListener("click", () => adjustDuplicates(figure.id, -1));
@@ -666,7 +666,7 @@ function createFigureCard(figure, { showSeriesLabel = false } = {}) {
     const incBtn = document.createElement("button");
     incBtn.type = "button";
     incBtn.className =
-      "rounded-lg border border-[#F3D5DD] bg-pastel-pale px-2 py-1 text-[11px] font-extrabold text-pastel-dark transition hover:bg-pastel hover:text-white";
+      "min-h-[32px] min-w-[34px] rounded-lg border border-[#F3D5DD] bg-pastel-pale px-2 py-1 text-[11px] font-extrabold text-pastel-dark transition active:scale-95 hover:bg-pastel hover:text-white";
     incBtn.textContent = "+1";
     incBtn.title = "Ajouter un doublon pour échange";
     incBtn.setAttribute("aria-label", `Ajouter un doublon de ${figure.nameFr}`);
@@ -710,10 +710,10 @@ function createFigureCard(figure, { showSeriesLabel = false } = {}) {
         </div>
       </div>
       <div class="mt-2.5 flex flex-col gap-1.5">
-        <button type="button" class="acquire-btn w-full rounded-xl bg-pastel-dark px-2.5 py-2 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#c75872]">
+        <button type="button" class="acquire-btn min-h-[38px] w-full rounded-xl bg-pastel-dark px-2.5 py-2 text-xs font-extrabold text-white shadow-sm transition active:scale-[0.98] hover:bg-[#c75872]">
           📸 J'ai trouvé !
         </button>
-        <button type="button" class="unwish-btn w-full rounded-xl border border-[#F5DCE2] bg-white px-2.5 py-1.5 text-[11px] font-bold text-muted transition hover:text-rose-600">
+        <button type="button" class="unwish-btn min-h-[34px] w-full rounded-xl border border-[#F5DCE2] bg-white px-2.5 py-1.5 text-[11px] font-bold text-muted transition active:scale-[0.98] hover:text-rose-600">
           Retirer de la liste
         </button>
       </div>
@@ -754,10 +754,10 @@ function createFigureCard(figure, { showSeriesLabel = false } = {}) {
       </div>
     </div>
     <div class="mt-2.5 grid grid-cols-2 gap-1.5">
-      <button type="button" class="wish-btn rounded-xl border border-[#F5D6DF] bg-white px-2 py-1.5 text-[11px] font-extrabold text-pastel-dark transition hover:bg-pastel-pale">
+      <button type="button" class="wish-btn flex min-h-[36px] items-center justify-center whitespace-nowrap rounded-xl border border-[#F5D6DF] bg-white px-1.5 py-1.5 text-[11px] font-extrabold text-pastel-dark transition active:scale-95 hover:bg-pastel-pale">
         ♡ Wishlist
       </button>
-      <button type="button" class="scan-btn rounded-xl border border-line bg-white px-2 py-1.5 text-[11px] font-extrabold text-ink transition hover:bg-paper">
+      <button type="button" class="scan-btn flex min-h-[36px] items-center justify-center whitespace-nowrap rounded-xl border border-line bg-white px-1.5 py-1.5 text-[11px] font-extrabold text-ink transition active:scale-95 hover:bg-paper">
         📸 Scanner
       </button>
     </div>
@@ -1122,6 +1122,7 @@ async function startSnapStream() {
     state.snapStream = stream;
     el.snapVideo.srcObject = stream;
     el.snapVideo.style.transform = state.snapFacingMode === "user" ? "scaleX(-1)" : "";
+    await el.snapVideo.play().catch(() => {});
   } catch {
     el.snapFallback.classList.remove("hidden");
     el.snapFallback.classList.add("flex");
