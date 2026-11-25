@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#FFFDF9" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SonnyDex" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
     <meta
       name="description"
       content="SonnyDex — Le carnet mobile-first tout doux pour collectionner, photographier et suivre tes figurines Sonny Angel."
@@ -106,12 +114,21 @@
       .float-angel {
         animation: floatAngel 4s ease-in-out infinite;
       }
+      /* Évite que <input type="date"> sur iOS/Android ne déborde ou change de taille */
+      input[type="date"] {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
     </style>
   </head>
 
   <body class="min-h-screen bg-cream text-ink pb-28 antialiased">
     <!-- En-tête compacte mobile-first -->
-    <header class="sticky top-0 z-30 border-b border-line bg-cream/90 backdrop-blur-md">
+    <header
+      class="sticky top-0 z-30 border-b border-line bg-cream/90 backdrop-blur-md"
+      style="padding-top: env(safe-area-inset-top)"
+    >
       <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
         <a href="#top" class="flex items-center gap-2.5 focus:outline-none">
           <span
@@ -518,7 +535,7 @@
       class="kawaii-dialog m-auto w-[calc(100%-24px)] max-w-md rounded-3xl border border-line bg-cream p-0 text-ink shadow-2xl"
       aria-labelledby="photo-dialog-title"
     >
-      <div class="relative max-h-[90dvh] overflow-y-auto p-5 sm:p-6">
+      <div class="relative max-h-[90dvh] overflow-y-auto overflow-x-hidden p-5 sm:p-6">
         <button
           type="button"
           data-close-dialog="photo-dialog"
@@ -599,30 +616,30 @@
           </div>
 
           <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <div>
+            <div class="min-w-0">
               <label for="photo-series" class="mb-1 block text-xs font-bold text-muted"
                 >Série</label
               >
               <select
                 id="photo-series"
                 required
-                class="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm font-semibold text-ink focus:border-pastel-dark focus:outline-none"
+                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink focus:border-pastel-dark focus:outline-none"
               ></select>
             </div>
-            <div>
+            <div class="min-w-0">
               <label for="photo-figure" class="mb-1 block text-xs font-bold text-muted"
                 >Personnage exact</label
               >
               <select
                 id="photo-figure"
                 required
-                class="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm font-semibold text-ink focus:border-pastel-dark focus:outline-none"
+                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink focus:border-pastel-dark focus:outline-none"
               ></select>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-2.5">
-            <div>
+          <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:items-end">
+            <div class="min-w-0">
               <label for="photo-date" class="mb-1 block text-xs font-bold text-muted"
                 >Date d'achat</label
               >
@@ -630,10 +647,10 @@
                 id="photo-date"
                 type="date"
                 required
-                class="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink focus:border-pastel-dark focus:outline-none"
+                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm text-ink focus:border-pastel-dark focus:outline-none"
               />
             </div>
-            <div>
+            <div class="min-w-0">
               <label for="photo-price" class="mb-1 block text-xs font-bold text-muted"
                 >Prix payé (€) <span class="font-normal opacity-75">optionnel</span></label
               >
@@ -644,13 +661,13 @@
                 min="0"
                 inputmode="decimal"
                 placeholder="12.90"
-                class="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink focus:border-pastel-dark focus:outline-none"
+                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm text-ink focus:border-pastel-dark focus:outline-none"
               />
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <div>
+          <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:items-end">
+            <div class="min-w-0">
               <label for="photo-location" class="mb-1 block text-xs font-bold text-muted"
                 >Boutique / Lieu <span class="font-normal opacity-75">optionnel</span></label
               >
@@ -659,11 +676,11 @@
                 type="text"
                 maxlength="120"
                 placeholder="Ex : Pop Mart, Vinted, Fnac…"
-                class="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink focus:border-pastel-dark focus:outline-none"
+                class="h-[42px] w-full min-w-0 rounded-xl border border-line bg-white px-3 text-sm text-ink focus:border-pastel-dark focus:outline-none"
               />
             </div>
 
-            <div>
+            <div class="min-w-0">
               <label class="mb-1 block text-xs font-bold text-muted"
                 >Doublons (pour échanges)</label
               >
